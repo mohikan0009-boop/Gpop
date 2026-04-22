@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G-POP 週次シート</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --border: #2e2e2e;
+    --accent-g: #f0c040; --accent-pre: #4a9eff; --accent-on: #50d890;
+    --accent-post: #ff6b6b; --accent-next: #c084fc;
+    --text: #f0f0f0; --text-muted: #888; --text-dim: #555;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; padding: 20px 16px 80px; max-width: 640px; margin: 0 auto; }
+
+  /* AI FEEDBACK */
+  .ai-feedback { background: linear-gradient(135deg, rgba(240,192,64,0.08), rgba(192,132,252,0.08)); border: 1px solid rgba(240,192,64,0.25); border-radius: 14px; padding: 16px 18px; margin-top: 16px; display: flex; gap: 12px; align-items: flex-start; animation: fadeSlideIn 0.4s ease; }
+  @keyframes fadeSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  .ai-avatar { font-size: 22px; flex-shrink: 0; line-height: 1; }
+  .ai-text { font-size: 14px; line-height: 1.7; color: var(--text); }
+  .ai-loading { color: var(--text-muted); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .ai-dots { display: inline-flex; gap: 4px; }
+  .ai-dots span { width: 5px; height: 5px; background: var(--accent-g); border-radius: 50%; animation: bounce 1.2s infinite; }
+  .ai-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .ai-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-5px);opacity:1} }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .flex-center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh; gap: 24px; }
+  .app-title { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 4px; color: var(--text-muted); text-transform: uppercase; }
+  .gpop-logo { font-family: 'Space Mono', monospace; font-size: 48px; font-weight: 700; letter-spacing: -2px; color: var(--accent-g); }
+
+  /* MEMBER */
+  .member-grid { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 420px; }
+  .member-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px 32px; cursor: pointer; text-align: center; transition: all 0.2s; min-width: 120px; }
+  .member-card:hover { border-color: var(--accent-g); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(240,192,64,0.12); }
+  .member-card .av { font-size: 32px; margin-bottom: 10px; }
+  .member-card .nm { font-size: 17px; font-weight: 700; }
+  .add-card { background: none; border: 1px dashed var(--border); border-radius: 16px; padding: 28px 32px; cursor: pointer; text-align: center; transition: all 0.2s; min-width: 120px; color: var(--text-dim); }
+  .add-card:hover { border-color: var(--accent-g); color: var(--accent-g); }
+  .add-card .ic { font-size: 28px; margin-bottom: 10px; }
+  .add-card .lb { font-size: 13px; }
+
+  /* FORM */
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px 24px; width: 100%; max-width: 360px; }
+  .form-title { font-size: 18px; font-weight: 700; margin-bottom: 24px; }
+  .form-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; display: block; }
+  .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 16px; padding: 13px 16px; outline: none; margin-bottom: 16px; transition: border-color 0.2s; }
+  .form-input:focus { border-color: var(--accent-g); }
+  .emoji-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .emoji-opt { font-size: 24px; padding: 8px; border-radius: 10px; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; background: var(--bg); }
+  .emoji-opt.selected { border-color: var(--accent-g); background: rgba(240,192,64,0.1); }
+  .btn-primary { width: 100%; background: var(--accent-g); border: none; color: #000; border-radius: 12px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; transition: opacity 0.15s; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-ghost { width: 100%; background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 12px; padding: 13px; font-size: 15px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; margin-top: 10px; transition: all 0.15s; }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* MODE */
+  .mode-cards { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 360px; }
+  .mode-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 18px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 14px; }
+  .mode-card:hover { border-color: var(--accent-g); transform: translateX(4px); }
+  .mode-icon { font-size: 26px; flex-shrink: 0; }
+  .mode-title { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+  .mode-sub { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .mode-day { font-size: 11px; font-family: 'Space Mono', monospace; margin-top: 5px; }
+
+  /* HEADER */
+  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .back-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; transition: all 0.15s; white-space: nowrap; }
+  .back-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .header-info { flex: 1; min-width: 0; }
+  .header-user { font-size: 15px; font-weight: 700; }
+  .header-week { font-size: 12px; color: var(--text-muted); font-family: 'Space Mono', monospace; }
+
+  /* QUESTION */
+  .q-progress { display: flex; gap: 4px; margin-bottom: 28px; }
+  .q-dot { height: 3px; flex: 1; background: var(--border); border-radius: 2px; transition: background 0.3s; }
+  .q-dot.done { background: var(--accent-g); }
+  .q-dot.active { background: var(--accent-g); opacity: 0.5; }
+  .q-section-label { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 3px; margin-bottom: 8px; text-transform: uppercase; }
+  .q-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; margin-bottom: 20px; }
+  .q-number { font-size: 11px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-bottom: 6px; }
+  .q-text { font-size: 17px; font-weight: 500; line-height: 1.6; margin-bottom: 10px; }
+  .ref-box { background: var(--bg); border-left: 3px solid var(--accent-g); border-radius: 4px; padding: 8px 12px; font-size: 12px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.6; }
+  .ref-box .rl { color: var(--accent-g); font-weight: 700; margin-right: 6px; }
+  .q-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.6; }
+  .q-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 15px; padding: 14px 16px; resize: vertical; min-height: 90px; transition: border-color 0.2s; outline: none; }
+  .q-input:focus { border-color: var(--accent-g); }
+  .q-time-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .q-time-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .q-time-input { width: 80px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 14px; padding: 8px 12px; text-align: center; outline: none; }
+  .q-time-input:focus { border-color: var(--accent-pre); }
+  .q-nav { display: flex; gap: 10px; }
+  .q-skip { flex: 1; background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 10px; padding: 14px; font-size: 14px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; }
+  .q-next { flex: 2; background: var(--accent-g); border: none; color: #000; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; }
+
+  /* SHEET */
+  .week-selector { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
+  .week-chip { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-family: 'Space Mono', monospace; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+  .week-chip.active { background: var(--accent-g); border-color: var(--accent-g); color: #000; font-weight: 700; }
+  .new-week-btn { background: none; border: 1px dashed var(--border); color: var(--text-dim); border-radius: 20px; padding: 6px 14px; font-size: 12px; cursor: pointer; white-space: nowrap; font-family: 'Noto Sans JP', sans-serif; transition: all 0.15s; flex-shrink: 0; }
+  .new-week-btn:hover { border-color: var(--accent-g); color: var(--accent-g); }
+  .sheet-block { border-radius: 14px; padding: 18px; margin-bottom: 14px; border: 1px solid transparent; }
+  .block-goal { background: rgba(240,192,64,0.06); border-color: rgba(240,192,64,0.2); }
+  .block-pre  { background: rgba(74,158,255,0.06); border-color: rgba(74,158,255,0.2); }
+  .block-on   { background: rgba(80,216,144,0.06); border-color: rgba(80,216,144,0.2); }
+  .block-post { background: rgba(255,107,107,0.06); border-color: rgba(255,107,107,0.2); }
+  .block-next { background: rgba(192,132,252,0.06); border-color: rgba(192,132,252,0.2); }
+  .block-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .block-label { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; }
+  .label-g { color: var(--accent-g); } .label-pre { color: var(--accent-pre); } .label-on { color: var(--accent-on); } .label-post { color: var(--accent-post); } .label-next { color: var(--accent-next); }
+  .block-sub { font-size: 11px; color: var(--text-muted); }
+  .sheet-row { cursor: pointer; border-radius: 8px; padding: 4px 6px; margin: 0 -6px 4px; transition: background 0.15s; display: flex; gap: 8px; align-items: flex-start; }
+  .sheet-row:hover { background: rgba(255,255,255,0.04); }
+  .sheet-row:hover .edit-hint { opacity: 1; }
+  .row-num { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text-dim); width: 16px; flex-shrink: 0; margin-top: 13px; }
+  .row-sublabel { font-size: 10px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-bottom: 2px; }
+  .row-text { font-size: 14px; line-height: 1.6; color: var(--text); }
+  .row-empty { color: var(--text-dim); font-style: italic; font-size: 13px; }
+  .edit-hint { font-size: 10px; color: var(--text-dim); opacity: 0; transition: opacity 0.15s; margin-left: 4px; }
+  .time-badge { display: inline-block; background: rgba(74,158,255,0.15); color: var(--accent-pre); border-radius: 6px; padding: 1px 8px; font-size: 11px; font-family: 'Space Mono', monospace; margin-top: 2px; }
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text-dim); }
+  .empty-big { font-size: 32px; margin-bottom: 12px; }
+  .empty-msg { font-size: 14px; line-height: 1.8; }
+  .start-btn { display: block; width: 100%; background: var(--accent-g); border: none; color: #000; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; margin-top: 24px; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; align-items: flex-end; justify-content: center; z-index: 100; }
+  .modal-overlay.hidden { display: none; }
+  .modal-box { background: var(--surface); border-radius: 20px 20px 0 0; padding: 24px 20px 40px; width: 100%; max-width: 540px; border-top: 1px solid var(--border); }
+  .modal-lbl { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-family: 'Space Mono', monospace; }
+  .modal-q { font-size: 16px; font-weight: 500; margin-bottom: 10px; line-height: 1.5; }
+  .modal-ref { background: var(--bg); border-left: 3px solid var(--accent-g); border-radius: 4px; padding: 8px 12px; font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.6; }
+  .modal-ref .rl { color: var(--accent-g); font-weight: 700; margin-right: 6px; }
+  .modal-ta { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 15px; padding: 14px 16px; resize: vertical; min-height: 100px; outline: none; margin-bottom: 10px; }
+  .modal-ta:focus { border-color: var(--accent-g); }
+  .modal-time { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-cancel { flex: 1; background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 10px; padding: 13px; font-size: 14px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; }
+  .modal-save { flex: 2; background: var(--accent-g); border: none; color: #000; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; }
+  .hidden { display: none !important; }
+
+  /* GOAL TAG */
+  .goal-tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .goal-tag-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); border-radius: 20px; padding: 7px 14px; font-size: 12px; cursor: pointer; font-family: "Noto Sans JP", sans-serif; transition: all 0.15s; }
+  .goal-tag-btn.sel-g1 { background: rgba(240,192,64,0.15); border-color: var(--accent-g); color: var(--accent-g); font-weight:700; }
+  .goal-tag-btn.sel-g2 { background: rgba(74,158,255,0.15); border-color: var(--accent-pre); color: var(--accent-pre); font-weight:700; }
+  .goal-tag-btn.sel-g3 { background: rgba(80,216,144,0.15); border-color: var(--accent-on); color: var(--accent-on); font-weight:700; }
+  .goal-tag-btn.sel-g4 { background: rgba(192,132,252,0.15); border-color: var(--accent-next); color: var(--accent-next); font-weight:700; }
+  .eval-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .eval-btn { flex:1; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); border-radius: 12px; padding: 12px 4px; font-size: 20px; cursor: pointer; text-align: center; transition: all 0.15s; }
+  .eval-btn.sel-maru2 { background: rgba(80,216,144,0.2); border-color: var(--accent-on); transform:scale(1.08); }
+  .eval-btn.sel-maru { background: rgba(74,158,255,0.2); border-color: var(--accent-pre); transform:scale(1.08); }
+  .eval-btn.sel-sankaku { background: rgba(240,192,64,0.2); border-color: var(--accent-g); transform:scale(1.08); }
+  .eval-btn.sel-batsu { background: rgba(255,107,107,0.2); border-color: var(--accent-post); transform:scale(1.08); }
+  .tag-badge { display:inline-block; border-radius:10px; padding:1px 8px; font-size:10px; font-family:"Space Mono",monospace; margin-right:4px; vertical-align:middle; }
+  .tag-g1 { background:rgba(240,192,64,0.15); color:var(--accent-g); }
+  .tag-g2 { background:rgba(74,158,255,0.15); color:var(--accent-pre); }
+  .tag-g3 { background:rgba(80,216,144,0.15); color:var(--accent-on); }
+  .tag-g4 { background:rgba(192,132,252,0.15); color:var(--accent-next); }
+  .eval-badge { display:inline-block; border-radius:8px; padding:2px 10px; font-size:14px; font-weight:700; vertical-align:middle; margin-right:4px; }
+  .ebadge-maru2 { background:rgba(80,216,144,0.2); color:var(--accent-on); }
+  .ebadge-maru { background:rgba(74,158,255,0.2); color:var(--accent-pre); }
+  .ebadge-sankaku { background:rgba(240,192,64,0.2); color:var(--accent-g); }
+  .ebadge-batsu { background:rgba(255,107,107,0.2); color:var(--accent-post); }
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1: メンバー選択 -->
+<div id="s-member" class="screen active">
+  <div class="flex-center">
+    <div class="app-title">Weekly Sheet</div>
+    <div class="gpop-logo">G-POP</div>
+    <div class="member-grid" id="member-grid"></div>
+  </div>
+</div>
+
+<!-- SCREEN 2: メンバー追加 -->
+<div id="s-add" class="screen">
+  <div class="flex-center">
+    <div class="form-card">
+      <div class="form-title">メンバーを追加</div>
+      <label class="form-label">名前</label>
+      <input class="form-input" id="new-name" type="text" placeholder="例：田中">
+      <label class="form-label">アイコン</label>
+      <div class="emoji-grid" id="emoji-grid"></div>
+      <button class="btn-primary" onclick="addMember()">追加する</button>
+      <button class="btn-ghost" onclick="show('s-member')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3: モード選択 -->
+<div id="s-mode" class="screen">
+  <div class="flex-center">
+    <div style="text-align:center">
+      <div class="app-title" style="margin-bottom:8px">G-POP</div>
+      <div id="mode-name" style="font-size:22px;font-weight:700;margin-bottom:4px"></div>
+      <div id="mode-week" style="font-size:12px;color:var(--text-muted);font-family:'Space Mono',monospace;margin-bottom:4px"></div>
+    </div>
+    <div class="mode-cards">
+      <div class="mode-card" onclick="startMode('gp')">
+        <div class="mode-icon">🎯</div>
+        <div>
+          <div class="mode-title">Goal & Pre</div>
+          <div class="mode-sub">ゴール確認 → 今週やることを決める</div>
+          <div class="mode-day" style="color:var(--accent-pre)">📅 月曜日向け</div>
+        </div>
+      </div>
+      <div class="mode-card" onclick="startMode('opn')">
+        <div class="mode-icon">📊</div>
+        <div>
+          <div class="mode-title">On / Post / Next Pre</div>
+          <div class="mode-sub">結果記録 → 振り返り → 来週のアクション</div>
+          <div class="mode-day" style="color:var(--accent-post)">📅 金曜日向け</div>
+        </div>
+      </div>
+      <div class="mode-card" onclick="goSheet()">
+        <div class="mode-icon">📋</div>
+        <div>
+          <div class="mode-title">シートを見る</div>
+          <div class="mode-sub">今週のシート全体を確認・編集する</div>
+          <div class="mode-day" style="color:var(--text-muted)">閲覧・修正用</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-ghost" style="max-width:360px;width:100%" onclick="show('s-member')">← メンバー選択へ戻る</button>
+  </div>
+</div>
+
+<!-- SCREEN 4: 質問入力 -->
+<div id="s-q" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="show('s-mode')">← 戻る</button>
+    <div class="header-info">
+      <div class="header-user" id="qh-user"></div>
+      <div class="header-week" id="qh-week"></div>
+    </div>
+    <div id="qh-mode" style="font-size:11px;font-family:'Space Mono',monospace;color:var(--text-muted);white-space:nowrap"></div>
+  </div>
+  <div class="q-progress" id="q-prog"></div>
+  <div class="q-section-label" id="q-sec"></div>
+  <div class="q-card" id="q-card">
+    <div class="q-number" id="q-num"></div>
+    <div class="q-text" id="q-txt"></div>
+    <div class="ref-box hidden" id="q-ref"></div>
+    <div class="q-hint" id="q-hint"></div>
+    <textarea class="q-input" id="q-in" placeholder="ここに入力..."></textarea>
+    <div class="q-time-row hidden" id="q-time">
+      <span class="q-time-label">⏱ 所要時間（分）</span>
+      <input type="number" class="q-time-input" id="q-time-val" placeholder="60" min="0">
+    </div>
+    <div class="hidden" id="q-goal-tag-wrap" style="margin-top:14px">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">どのゴールに関連する？</div>
+      <div class="goal-tag-row" id="q-goal-tag-row"></div>
+    </div>
+    <div class="hidden" id="q-eval-wrap" style="margin-top:14px">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">結果の評価</div>
+      <div class="eval-row" id="q-eval-row"></div>
+    </div>
+  </div>
+  <div id="q-ai-feedback" class="hidden"></div>
+  <div class="q-nav" id="q-nav"></div>
+</div>
+
+<!-- SCREEN 5: シート -->
+<div id="s-sheet" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="show('s-mode')">← 戻る</button>
+    <div class="header-info">
+      <div class="header-user" id="sh-user"></div>
+      <div class="header-week" id="sh-week"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button onclick="exportData()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:10px;font-size:13px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">💾 バックアップ</button>
+    <button onclick="showImport()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:10px;font-size:13px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">📂 復元</button>
+  </div>
+
+  <!-- バックアップ表示モーダル -->
+  <div id="backup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;padding:20px;overflow-y:auto">
+    <div style="background:#1a1a1a;border-radius:16px;padding:24px;max-width:540px;margin:0 auto">
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px" id="backup-modal-title">💾 バックアップ</div>
+      <div style="font-size:12px;color:#888;margin-bottom:14px" id="backup-modal-desc">以下のテキストを全選択してコピーし、メモアプリ等に保存してください。</div>
+      <textarea id="backup-textarea" style="width:100%;height:200px;background:#0f0f0f;border:1px solid #2e2e2e;border-radius:10px;color:#f0f0f0;font-family:'Space Mono',monospace;font-size:11px;padding:12px;resize:vertical;outline:none" readonly></textarea>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button onclick="selectAllBackup()" style="flex:1;background:#f0c040;border:none;color:#000;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">全選択</button>
+        <button onclick="closeBackupModal()" style="flex:1;background:none;border:1px solid #2e2e2e;color:#888;border-radius:10px;padding:13px;font-size:14px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 復元モーダル -->
+  <div id="restore-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;padding:20px;overflow-y:auto">
+    <div style="background:#1a1a1a;border-radius:16px;padding:24px;max-width:540px;margin:0 auto">
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">📂 復元</div>
+      <div style="font-size:12px;color:#888;margin-bottom:14px">バックアップ時にコピーしたテキストを以下に貼り付けて「復元する」を押してください。</div>
+      <textarea id="restore-textarea" style="width:100%;height:200px;background:#0f0f0f;border:1px solid #2e2e2e;border-radius:10px;color:#f0f0f0;font-family:'Space Mono',monospace;font-size:11px;padding:12px;resize:vertical;outline:none" placeholder="ここにバックアップテキストを貼り付け..."></textarea>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button onclick="importData()" style="flex:2;background:#f0c040;border:none;color:#000;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">復元する</button>
+        <button onclick="closeRestoreModal()" style="flex:1;background:none;border:1px solid #2e2e2e;color:#888;border-radius:10px;padding:13px;font-size:14px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">キャンセル</button>
+      </div>
+    </div>
+  </div>
+  <div class="week-selector" id="week-sel"></div>
+  <div id="sheet-content"></div>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="modal" class="modal-overlay hidden" onclick="closeMBg(event)">
+  <div class="modal-box">
+    <div class="modal-lbl" id="m-lbl"></div>
+    <div class="modal-q" id="m-q"></div>
+    <div class="modal-ref hidden" id="m-ref"></div>
+    <textarea class="modal-ta" id="m-ta"></textarea>
+    <div class="modal-time hidden" id="m-time">
+      <span class="q-time-label">⏱ 所要時間（分）</span>
+      <input type="number" class="q-time-input" id="m-time-val" placeholder="60" min="0">
+    </div>
+    <div class="hidden" id="m-goal-tag-wrap">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">どのゴールに関連する？</div>
+      <div class="goal-tag-row" id="m-goal-tag-row"></div>
+    </div>
+    <div class="hidden" id="m-eval-wrap">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">結果の評価</div>
+      <div class="eval-row" id="m-eval-row"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeM()">キャンセル</button>
+      <button class="modal-save" onclick="saveM()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const EMOJIS = ['👤','👥','🙋','💪','🧠','🎯','🚀','⭐','🔥','💎','🌟','🦁'];
+
+const GOAL_TAGS = [
+  { key:'g1', label:'①人生', cls:'sel-g1', badgeCls:'tag-g1' },
+  { key:'g2', label:'②今年', cls:'sel-g2', badgeCls:'tag-g2' },
+  { key:'g3', label:'③今月', cls:'sel-g3', badgeCls:'tag-g3' },
+  { key:'g4', label:'④その他', cls:'sel-g4', badgeCls:'tag-g4' },
+];
+const EVALS = [
+  { val:'maru2', label:'◎', cls:'sel-maru2', badgeCls:'ebadge-maru2' },
+  { val:'maru',  label:'○', cls:'sel-maru',  badgeCls:'ebadge-maru'  },
+  { val:'sankaku',label:'△',cls:'sel-sankaku',badgeCls:'ebadge-sankaku'},
+  { val:'batsu', label:'×', cls:'sel-batsu', badgeCls:'ebadge-batsu' },
+];
+const GOAL_TAG_KEYS = new Set(['p1','p2','p3','p4','np1','np2','np3','np4']);
+const EVAL_KEYS = new Set(['o1','o2','o3','o4']);
+
+const Q_GP = [
+  { sec:'GOAL', lbl:'Goal（ゴール）', key:'g1', q:'人生をかけて実現したいゴールは？', hint:'長期的なビジョン・使命感。変わらない軸として。', time:false },
+  { sec:'GOAL', lbl:'Goal（ゴール）', key:'g2', q:'今年のゴールは？', hint:'この1年で達成したい状態。具体的に。', time:false },
+  { sec:'GOAL', lbl:'Goal（ゴール）', key:'gq', q:'今Qのゴールは？', hint:'この四半期（3ヶ月）で達成したいこと。', time:false },
+  { sec:'GOAL', lbl:'Goal（ゴール）', key:'g3', q:'今月のゴールは？', hint:'今月中に完了・前進させたいこと。', time:false },
+  { sec:'GOAL', lbl:'Goal（ゴール）', key:'g4', q:'その他のゴール・意識したいことは？', hint:'サブ目標・健康・関係性など何でも。', time:false },
+  { sec:'PRE', lbl:'Pre（事前準備）', key:'p1', q:'今週やると決めたこと①は？', hint:'具体的なアクション。「〜する」の形で。', time:true },
+  { sec:'PRE', lbl:'Pre（事前準備）', key:'p2', q:'今週やると決めたこと②は？', hint:'サブゴールへのアクション。', time:true },
+  { sec:'PRE', lbl:'Pre（事前準備）', key:'p3', q:'今週やると決めたこと③は？', hint:'優先度の高いタスク。', time:false },
+  { sec:'PRE', lbl:'Pre（事前準備）', key:'p4', q:'今週やると決めたこと④は？', hint:'余力があればやること。', time:false },
+];
+
+const Q_OPN = [
+  { sec:'ON', lbl:'On（結果）', key:'o1', q:'Pre①をやってみて、どんな結果だった？', hint:'良かった点・うまくいかなかった点・気づき。', time:false, ref:'p1', refLbl:'Pre①' },
+  { sec:'ON', lbl:'On（結果）', key:'o2', q:'Pre②をやってみて、どんな結果だった？', hint:'数字・感触・変化など具体的に。', time:false, ref:'p2', refLbl:'Pre②' },
+  { sec:'ON', lbl:'On（結果）', key:'o3', q:'Pre③をやってみて、どんな結果だった？', hint:'予想外のこと、対応したことなど。', time:false, ref:'p3', refLbl:'Pre③' },
+  { sec:'ON', lbl:'On（結果）', key:'o4', q:'Pre④・その他の結果や出来事は？今週の総合スコアは？（1〜10）', hint:'主観でOK。10が完璧。なぜそのスコアかも。', time:false, ref:'p4', refLbl:'Pre④' },
+  { sec:'POST', lbl:'Post（振り返り）', key:'po1', q:'On①が結果を出せた（or 出せなかった）理由は？', hint:'「なぜ？」を2回繰り返して深掘り。', time:false, ref:'o1', refLbl:'On①' },
+  { sec:'POST', lbl:'Post（振り返り）', key:'po2', q:'On②が結果を出せた（or 出せなかった）理由は？', hint:'環境・準備・判断のどこに原因があった？', time:false, ref:'o2', refLbl:'On②' },
+  { sec:'POST', lbl:'Post（振り返り）', key:'po3', q:'On③④の振り返り・気づきは？', hint:'改善できること、次に活かせることは？', time:false, ref:'o3', refLbl:'On③' },
+  { sec:'POST', lbl:'Post（振り返り）', key:'po4', q:'今週の最大の学びを1つ挙げるとしたら？', hint:'次週以降に活かせること。再現できる形で。', time:false },
+  { sec:'NEXT', lbl:'Next Pre（来週のアクション）', key:'np1', q:'Post①（振り返り①）を踏まえた来週のアクションは？', hint:'改善アクションを具体的に。', time:false, ref:'po1', refLbl:'Post①（振り返り）' },
+  { sec:'NEXT', lbl:'Next Pre（来週のアクション）', key:'np2', q:'Post②（振り返り②）を踏まえた来週のアクションは？', hint:'改善アクションを具体的に。', time:false, ref:'po2', refLbl:'Post②（振り返り）' },
+  { sec:'NEXT', lbl:'Next Pre（来週のアクション）', key:'np3', q:'Post④（学び）を踏まえた来週のアクションは？', hint:'学びを行動に変換する。', time:false, ref:'po4', refLbl:'Post④（学び）' },
+  { sec:'NEXT', lbl:'Next Pre（来週のアクション）', key:'np4', q:'来週どうしてもやること（最重要アクション）は？', hint:'1つだけ選ぶとしたら何か。', time:false },
+];
+
+const ALL_Q = [...Q_GP, ...Q_OPN];
+// memoはALL_Qに含まれないためopenM内で直接処理
+const SEC_COLOR = { GOAL:'label-g', PRE:'label-pre', ON:'label-on', POST:'label-post', NEXT:'label-next' };
+const GOAL_LBL = { g1:'人生をかけて実現したいゴール', g2:'今年のゴール', gq:'今Qのゴール', g3:'今月のゴール', g4:'その他' };
+
+let cu=null, cwk=null, cmode=null, cqlist=[], cqi=0, selEmoji=EMOJIS[0], editKey=null;
+let curGoalTag=null, curEval=null;
+let mGoalTag=null, mEval=null;
+
+const MK='gpop_members';
+function lsM(){try{return JSON.parse(localStorage.getItem(MK))||[];}catch{return[];}}
+function svM(v){localStorage.setItem(MK,JSON.stringify(v));}
+function sk(uid,wk){return `gpop_${uid}_${wk}`;}
+function ld(uid,wk){try{return JSON.parse(localStorage.getItem(sk(uid,wk)))||{};}catch{return{};}}
+function sd(uid,wk,d){localStorage.setItem(sk(uid,wk),JSON.stringify(d));}
+function wks(uid){
+  const r=[];
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(`gpop_${uid}_`))r.push(k.replace(`gpop_${uid}_`,''));}
+  return r.sort().reverse();
+}
+function wkKey(off=0){const d=new Date();d.setDate(d.getDate()-d.getDay()+1+off*7);return d.toISOString().slice(0,10);}
+function wkLbl(k){const d=new Date(k+'T00:00:00');return `${d.getMonth()+1}/${d.getDate()}週`;}
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function renderMembers(){
+  let ms=lsM();
+  if(ms.length===0){ms=[{id:'daiji',name:'大治',emoji:'👤'},{id:'seki',name:'関さん',emoji:'👥'}];svM(ms);}
+  document.getElementById('member-grid').innerHTML=
+    ms.map(m=>`<div class="member-card" onclick="pickMember('${m.id}','${m.name}','${m.emoji}')"><div class="av">${m.emoji}</div><div class="nm">${m.name}</div></div>`).join('')+
+    `<div class="add-card" onclick="showAdd()"><div class="ic">＋</div><div class="lb">メンバー追加</div></div>`;
+}
+function pickMember(id,name,emoji){
+  cu={id,name,emoji};cwk=wkKey(0);
+  document.getElementById('mode-name').textContent=name;
+  document.getElementById('mode-week').textContent=wkLbl(cwk);
+  show('s-mode');
+}
+function showAdd(){
+  selEmoji=EMOJIS[0];
+  document.getElementById('new-name').value='';
+  document.getElementById('emoji-grid').innerHTML=EMOJIS.map(e=>`<div class="emoji-opt ${e===selEmoji?'selected':''}" onclick="pickEmoji('${e}')">${e}</div>`).join('');
+  show('s-add');
+}
+function pickEmoji(e){selEmoji=e;document.querySelectorAll('.emoji-opt').forEach(el=>el.classList.toggle('selected',el.textContent===e));}
+function addMember(){
+  const name=document.getElementById('new-name').value.trim();
+  if(!name){alert('名前を入力してください');return;}
+  const ms=lsM();ms.push({id:'m_'+Date.now(),name,emoji:selEmoji});svM(ms);
+  renderMembers();show('s-member');
+}
+
+function startMode(mode){
+  cmode=mode;cqlist=mode==='gp'?Q_GP:Q_OPN;cqi=0;
+  document.getElementById('qh-user').textContent=cu.name;
+  document.getElementById('qh-week').textContent=wkLbl(cwk);
+  document.getElementById('qh-mode').textContent=mode==='gp'?'🎯 Goal & Pre':'📊 On/Post/Next';
+  show('s-q');renderQ();
+}
+function goSheet(){
+  document.getElementById('sh-user').textContent=cu.name;
+  document.getElementById('sh-week').textContent=wkLbl(cwk);
+  show('s-sheet');renderSheet();
+}
+
+function renderGoalTagUI(containerId, currentTag, onSelect) {
+  const dat = ld(cu.id, cwk);
+  document.getElementById(containerId).innerHTML = GOAL_TAGS.map(t => {
+    const goalText = dat[t.key]?.text || '';
+    const label = goalText ? `${t.label}：${goalText.slice(0,15)}${goalText.length>15?'…':''}` : t.label;
+    const isSel = currentTag === t.key;
+    return `<button class="goal-tag-btn ${isSel?t.cls:''}" onclick="${onSelect}('${t.key}')">${label}</button>`;
+  }).join('');
+}
+
+function pickGoalTag(key) {
+  curGoalTag = curGoalTag === key ? null : key;
+  renderGoalTagUI('q-goal-tag-row', curGoalTag, 'pickGoalTag');
+}
+function pickMGoalTag(key) {
+  mGoalTag = mGoalTag === key ? null : key;
+  renderGoalTagUI('m-goal-tag-row', mGoalTag, 'pickMGoalTag');
+}
+
+function renderEvalUI(containerId, currentEval, onSelect) {
+  document.getElementById(containerId).innerHTML = EVALS.map(e => {
+    const isSel = currentEval === e.val;
+    return `<button class="eval-btn ${isSel?e.cls:''}" onclick="${onSelect}('${e.val}')">${e.label}</button>`;
+  }).join('');
+}
+function pickEval(val) {
+  curEval = curEval === val ? null : val;
+  renderEvalUI('q-eval-row', curEval, 'pickEval');
+}
+function pickMEval(val) {
+  mEval = mEval === val ? null : val;
+  renderEvalUI('m-eval-row', mEval, 'pickMEval');
+}
+
+function renderQ(){
+  const qs=cqlist, tot=qs.length;
+  document.getElementById('q-prog').innerHTML=qs.map((_,i)=>`<div class="q-dot ${i<cqi?'done':i===cqi?'active':''}"></div>`).join('');
+
+  if(cqi>=tot){
+    document.getElementById('q-prog').innerHTML=qs.map(()=>`<div class="q-dot done"></div>`).join('');
+    document.getElementById('q-sec').textContent='';
+    document.getElementById('q-card').innerHTML=`<div style="text-align:center;padding:32px 0"><div style="font-size:40px;margin-bottom:16px">${cmode==='gp'?'🎯':'✅'}</div><div style="font-size:18px;font-weight:700;margin-bottom:8px">入力完了！</div><div style="font-size:14px;color:var(--text-muted)">${cmode==='gp'?'金曜日にOn/Post/Nextを記録しましょう':'お疲れさまでした'}</div></div>`;
+    document.getElementById('q-nav').innerHTML=`<button class="q-next" style="flex:1" onclick="goSheet()">シートを見る →</button>`;
+    return;
+  }
+
+  const q=qs[cqi];
+  const dat=ld(cu.id,cwk);
+  const saved=dat[q.key]||{};
+
+  document.getElementById('q-sec').innerHTML=`<span class="${SEC_COLOR[q.sec]}">${q.lbl}</span>`;
+  document.getElementById('q-num').textContent=`Q${cqi+1} / ${tot}`;
+  document.getElementById('q-txt').textContent=q.q;
+  document.getElementById('q-hint').textContent=q.hint;
+
+  const refEl=document.getElementById('q-ref');
+  if(q.ref&&dat[q.ref]?.text){refEl.innerHTML=`<span class="rl">${q.refLbl}</span>${dat[q.ref].text}`;refEl.classList.remove('hidden');}
+  else refEl.classList.add('hidden');
+
+  document.getElementById('q-in').value=saved.text||'';
+  const tr=document.getElementById('q-time');
+  if(q.time){tr.classList.remove('hidden');document.getElementById('q-time-val').value=saved.time||'';}
+  else tr.classList.add('hidden');
+
+  const gtWrap=document.getElementById('q-goal-tag-wrap');
+  if(GOAL_TAG_KEYS.has(q.key)){
+    curGoalTag=saved.goalTag||null;
+    gtWrap.classList.remove('hidden');
+    renderGoalTagUI('q-goal-tag-row', curGoalTag, 'pickGoalTag');
+  } else {
+    gtWrap.classList.add('hidden');
+    curGoalTag=null;
+  }
+
+  const evWrap=document.getElementById('q-eval-wrap');
+  if(EVAL_KEYS.has(q.key)){
+    curEval=saved.eval||null;
+    evWrap.classList.remove('hidden');
+    renderEvalUI('q-eval-row', curEval, 'pickEval');
+  } else {
+    evWrap.classList.add('hidden');
+    curEval=null;
+  }
+
+  document.getElementById('q-nav').innerHTML=`<button class="q-skip" onclick="skipQ()">スキップ</button><button class="q-next" onclick="nextQ()">次へ →</button>`;
+
+  // AIフィードバックエリアをリセット
+  const fbEl = document.getElementById('q-ai-feedback');
+  fbEl.classList.add('hidden');
+  fbEl.innerHTML = '';
+}
+
+async function getAIFeedback(question, answer, sec) {
+  const fbEl = document.getElementById('q-ai-feedback');
+  fbEl.classList.remove('hidden');
+  fbEl.innerHTML = `<div class="ai-feedback"><div class="ai-avatar">✨</div><div class="ai-text"><div class="ai-loading"><span>AIがコメント中</span><div class="ai-dots"><span></span><span></span><span></span></div></div></div></div>`;
+
+  const secLabels = { GOAL:'ゴール', PRE:'今週のアクション', ON:'結果', POST:'振り返り', NEXT:'来週のアクション' };
+  const prompt = `あなたはG-POPという週次振り返りフレームワークのコーチです。
+ユーザーが「${secLabels[sec]||sec}」セクションの質問「${question}」に対して以下のように回答しました：
+
+「${answer}」
+
+この回答に対して、以下の形式で日本語で短く返してください：
+- 最初に共感や称賛のポジティブな一言（絵文字を1〜2個使ってOK）
+- 次に気づきや深掘りにつながる短いコメント（1〜2文）
+全体で4〜6文以内にまとめてください。フランクで温かいトーンで。`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || 'ナイス！次も頑張ろう 💪';
+    fbEl.innerHTML = `<div class="ai-feedback"><div class="ai-avatar">✨</div><div class="ai-text">${text.replace(/\n/g,'<br>')}</div></div>`;
+  } catch(e) {
+    fbEl.innerHTML = '';
+    fbEl.classList.add('hidden');
+  }
+}
+
+function nextQ(){
+  const q=cqlist[cqi];if(!q){cqi++;renderQ();return;}
+  const val=document.getElementById('q-in').value.trim();
+  const tv=q.time?document.getElementById('q-time-val').value:null;
+  const d=ld(cu.id,cwk);
+  d[q.key]={text:val, time:tv};
+  if(GOAL_TAG_KEYS.has(q.key)) d[q.key].goalTag=curGoalTag;
+  if(EVAL_KEYS.has(q.key)) d[q.key].eval=curEval;
+  sd(cu.id,cwk,d);
+
+  // 入力がある場合はAIフィードバックを表示してから次へ
+  if(val) {
+    // ナビを「次へ」だけに切り替えて進行を一時停止
+    document.getElementById('q-nav').innerHTML=`<button class="q-next" style="flex:1" onclick="advanceQ()">次の質問へ →</button>`;
+    getAIFeedback(q.q, val, q.sec);
+  } else {
+    cqi++;renderQ();
+  }
+}
+
+function advanceQ(){
+  cqi++;renderQ();
+}
+
+function skipQ(){cqi++;renderQ();}
+
+function goalTagBadge(v) {
+  if(!v?.goalTag) return '';
+  const t=GOAL_TAGS.find(t=>t.key===v.goalTag);
+  return t?`<span class="tag-badge ${t.badgeCls}">${t.label}</span>`:'';
+}
+function evalBadge(v) {
+  if(!v?.eval) return '';
+  const e=EVALS.find(e=>e.val===v.eval);
+  return e?`<span class="eval-badge ${e.badgeCls}">${e.label}</span>`:'';
+}
+
+function renderSheet(){
+  const uid=cu.id;
+  const aw=wks(uid);if(!aw.includes(cwk))aw.unshift(cwk);
+  document.getElementById('week-sel').innerHTML=
+    aw.map(w=>`<div class="week-chip ${w===cwk?'active':''}" onclick="selWk('${w}')">${wkLbl(w)}</div>`).join('')+
+    `<button class="new-week-btn" onclick="newWk()">+ 新しい週</button>`;
+
+  const dat=ld(uid,cwk);
+  const el=document.getElementById('sheet-content');
+  if(!Object.values(dat).some(v=>v?.text)){
+    el.innerHTML=`<div class="empty-state"><div class="empty-big">📋</div><div class="empty-msg">${wkLbl(cwk)}の記録がまだありません。</div></div><button class="start-btn" onclick="show('s-mode')">入力を始める →</button>`;
+    return;
+  }
+
+  const row=(num,key)=>{
+    const v=dat[key];const tx=v?.text||'';const tm=v?.time;
+    const sl=GOAL_LBL[key]||null;
+    const tb=goalTagBadge(v);
+    const eb=evalBadge(v);
+    return `<div class="sheet-row" onclick="openM('${key}')">
+      <span class="row-num">${num}</span>
+      <div style="flex:1">
+        ${sl?`<div class="row-sublabel">${sl}</div>`:''}
+        <div style="margin-bottom:2px">${tb}${eb}</div>
+        <span class="row-text ${tx?'':'row-empty'}">${tx||'（タップして入力）'}<span class="edit-hint">✏️</span></span>
+        ${(tm&&tm!=='')?`<div><span class="time-badge">⏱ ${tm}分</span></div>`:''}
+      </div>
+    </div>`;
+  };
+
+  el.innerHTML=`
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;text-align:right">各項目をタップして編集</div>
+    <div class="sheet-block block-goal">
+      <div class="block-header"><span class="block-label label-g">Goal</span><span class="block-sub">ゴール・ミッション</span></div>
+      ${row('①','g1')}${row('②','g2')}${row('Q','gq')}${row('③','g3')}${row('④','g4')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="sheet-block block-pre" style="margin:0">
+        <div class="block-header"><span class="block-label label-pre">Pre</span><span class="block-sub">事前準備</span></div>
+        ${row('①','p1')}${row('②','p2')}${row('③','p3')}${row('④','p4')}
+      </div>
+      <div class="sheet-block block-on" style="margin:0">
+        <div class="block-header"><span class="block-label label-on">On</span><span class="block-sub">結果</span></div>
+        ${row('①','o1')}${row('②','o2')}${row('③','o3')}${row('④','o4')}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="sheet-block block-post" style="margin:0">
+        <div class="block-header"><span class="block-label label-post">Post</span><span class="block-sub">振り返り</span></div>
+        ${row('①','po1')}${row('②','po2')}${row('③','po3')}${row('④','po4')}
+      </div>
+      <div class="sheet-block block-next" style="margin:0">
+        <div class="block-header"><span class="block-label label-next">Next Pre</span><span class="block-sub">来週のアクション</span></div>
+        ${row('①','np1')}${row('②','np2')}${row('③','np3')}${row('④','np4')}
+      </div>
+    </div>
+    <div class="sheet-block" style="background:rgba(255,255,255,0.03);border-color:var(--border);margin-bottom:0">
+      <div class="block-header"><span class="block-label" style="color:var(--text-muted)">📝 Memo</span><span class="block-sub">自由記述・メモ</span></div>
+      <textarea id="memo-area" placeholder="気づき・ひとことメモ・なんでも..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:14px;padding:12px 14px;resize:vertical;min-height:100px;outline:none;line-height:1.7;transition:border-color 0.2s">${dat.memo?.text||''}</textarea>
+    </div>`;
+
+  // メモ自動保存
+  const memoArea = document.getElementById('memo-area');
+  if(memoArea){
+    memoArea.addEventListener('input', ()=>{
+      const d=ld(cu.id,cwk);
+      d.memo={text:memoArea.value};
+      sd(cu.id,cwk,d);
+    });
+    memoArea.addEventListener('focus', ()=>{ memoArea.style.borderColor='var(--accent-g)'; });
+    memoArea.addEventListener('blur',  ()=>{ memoArea.style.borderColor='var(--border)'; });
+  }
+}
+
+function selWk(w){cwk=w;document.getElementById('sh-week').textContent=wkLbl(w);document.getElementById('mode-week').textContent=wkLbl(w);renderSheet();}
+
+function newWk(){
+  const uid=cu.id,ew=wks(uid);
+  const prev=ew.length>0?ld(uid,ew[0]):{};
+  for(let i=0;i<52;i++){
+    const k=wkKey(i);
+    if(!ew.includes(k)){
+      cwk=k;
+      const nd={};
+      if(prev.g1?.text) nd.g1={text:prev.g1.text};
+      if(prev.g2?.text) nd.g2={text:prev.g2.text};
+      if(prev.g3?.text) nd.g3={text:prev.g3.text};
+      ['np1','np2','np3','np4'].forEach((nk,i)=>{
+        const pk='p'+(i+1);
+        if(prev[nk]?.text) nd[pk]={text:prev[nk].text, goalTag:prev[nk].goalTag||null};
+      });
+      sd(uid,k,nd);
+      document.getElementById('mode-week').textContent=wkLbl(k);
+      document.getElementById('sh-week').textContent=wkLbl(k);
+      show('s-mode');
+      return;
+    }
+  }
+}
+
+function openM(key){
+  const q=ALL_Q.find(q=>q.key===key);if(!q)return;
+  editKey=key;
+  const dat=ld(cu.id,cwk);const v=dat[key]||{};
+  document.getElementById('m-lbl').innerHTML=`<span class="${SEC_COLOR[q.sec]}">${q.lbl}</span>`;
+  document.getElementById('m-q').textContent=q.q;
+  document.getElementById('m-ta').value=v.text||'';
+  const mref=document.getElementById('m-ref');
+  if(q.ref&&dat[q.ref]?.text){mref.innerHTML=`<span class="rl">${q.refLbl}</span>${dat[q.ref].text}`;mref.classList.remove('hidden');}
+  else mref.classList.add('hidden');
+  const mt=document.getElementById('m-time');
+  if(q.time){mt.classList.remove('hidden');document.getElementById('m-time-val').value=v.time||'';}
+  else mt.classList.add('hidden');
+
+  const gtW=document.getElementById('m-goal-tag-wrap');
+  if(GOAL_TAG_KEYS.has(key)){
+    mGoalTag=v.goalTag||null;
+    gtW.classList.remove('hidden');
+    renderGoalTagUI('m-goal-tag-row', mGoalTag, 'pickMGoalTag');
+  } else { gtW.classList.add('hidden'); mGoalTag=null; }
+
+  const evW=document.getElementById('m-eval-wrap');
+  if(EVAL_KEYS.has(key)){
+    mEval=v.eval||null;
+    evW.classList.remove('hidden');
+    renderEvalUI('m-eval-row', mEval, 'pickMEval');
+  } else { evW.classList.add('hidden'); mEval=null; }
+
+  document.getElementById('modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('m-ta').focus(),100);
+}
+function closeMBg(e){if(e.target===document.getElementById('modal'))closeM();}
+function closeM(){document.getElementById('modal').classList.add('hidden');editKey=null;}
+function saveM(){
+  if(!editKey)return;
+  const q=ALL_Q.find(q=>q.key===editKey);
+  const tx=document.getElementById('m-ta').value.trim();
+  const tm=q?.time?document.getElementById('m-time-val').value:null;
+  const d=ld(cu.id,cwk);
+  d[editKey]={text:tx,time:tm};
+  if(GOAL_TAG_KEYS.has(editKey)) d[editKey].goalTag=mGoalTag;
+  if(EVAL_KEYS.has(editKey)) d[editKey].eval=mEval;
+  sd(cu.id,cwk,d);
+  closeM();renderSheet();
+}
+
+function exportData() {
+  const allData = {};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith('gpop_')){
+      try{ allData[k]=JSON.parse(localStorage.getItem(k)); }catch{ allData[k]=localStorage.getItem(k); }
+    }
+  }
+  const json = JSON.stringify(allData, null, 2);
+  document.getElementById('backup-textarea').value = json;
+  document.getElementById('backup-modal').style.display = 'block';
+}
+
+function selectAllBackup() {
+  const ta = document.getElementById('backup-textarea');
+  ta.select();
+  ta.setSelectionRange(0, 99999);
+  try { document.execCommand('copy'); alert('コピーしました！メモアプリに貼り付けて保存してください。'); }
+  catch { alert('手動で全選択してコピーしてください。'); }
+}
+
+function closeBackupModal() {
+  document.getElementById('backup-modal').style.display = 'none';
+}
+
+function showImport() {
+  document.getElementById('restore-textarea').value = '';
+  document.getElementById('restore-modal').style.display = 'block';
+}
+
+function closeRestoreModal() {
+  document.getElementById('restore-modal').style.display = 'none';
+}
+
+function importData() {
+  const text = document.getElementById('restore-textarea').value.trim();
+  if(!text) { alert('テキストを貼り付けてください'); return; }
+  try {
+    const data = JSON.parse(text);
+    let count = 0;
+    Object.entries(data).forEach(([k,v]) => {
+      if(k.startsWith('gpop_')) {
+        localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+        count++;
+      }
+    });
+    closeRestoreModal();
+    alert(`復元完了：${count}件のデータを読み込みました`);
+    renderMembers();
+    if(cu) renderSheet();
+  } catch(err) {
+    alert('読み込みに失敗しました。バックアップテキストをそのまま貼り付けてください。');
+  }
+}
+
+renderMembers();
+</script>
+</body>
+</html>
